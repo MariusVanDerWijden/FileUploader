@@ -1,0 +1,49 @@
+msc {
+  arcgradient=10;
+
+  client, server;
+
+  client abox server [label="Handshake"];
+  client => server [label="SYN"];
+  client => server [label="hostname"];
+  server box server [label="If hostname is unique"];
+  server => client [label="ACK"];
+  server box server [label="else"];
+  server => client [label="NEW"];
+  server => client [label="newHostname"];
+  |||;
+  client abox server [label="InitMainSequence"];
+  client => server [label="REQ"];
+  server note server [label="calculate metadata"];
+  server => client [label="REPLY"];
+  server box server [label="if metadata"];
+  server => client [label="metadata"];
+  server box server [label="else"];
+  server => client [label="NULL"];
+  client => server [label="ACK"];
+  |||;
+  client abox server [label="SendData"];
+  client box client [label="calulate Delta"];
+  client => server [label="FILES"];
+  client => server [label="listOfFiles.size"];
+  server => client [label="ACK"];
+  client box client [label="for each file in Dataset"];
+  client => server [label="NAME"];
+  client => server [label="header"];
+  client => server [label="SIZE"];
+  client => server [label="sizeInByte"];
+  client => server [label="CONTENT"];
+  client => server [label="data"];
+  server => client [label="ACK"];
+  client box client [label="end for-loop"];
+  |||;
+  client => server [label="NULL"];
+  server => client [label="ACK"];
+  |||;
+  client abox server [label="CloseConnection"];
+  client => server [label="CLOSE"];
+  server => client [label="CLOSE_ACK"];
+
+
+}
+
