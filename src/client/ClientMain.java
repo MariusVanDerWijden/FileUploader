@@ -2,7 +2,7 @@ package client;
 
 import tools.ExceptionHandler;
 
-public class Main {
+public class ClientMain {
 
     public static void main(String[] args){
         String ip = args[0];

@@ -2,6 +2,7 @@ package server;
 
 import tools.ExceptionHandler;
 import tools.IOHelper;
+import tools.protocol.CommunicationException;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -60,16 +61,22 @@ public class ServerThread extends Thread{
                         sendMessage(out, "CLOSE_ACK");
                         stopThis();
                 }
-            }catch (Exception e)
+            }catch (CommunicationException com){
+                ExceptionHandler.handleException(com);
+            }
+            catch (Exception e)
             {
-                ExceptionHandler.handleException(e, ExceptionHandler.OccClass.SERVER_THREAD);
+                if(e instanceof CommunicationException)
+                    ExceptionHandler.handleException((CommunicationException)e);
+                else
+                    ExceptionHandler.handleException(e, ExceptionHandler.OccClass.SERVER_THREAD);
             }
         }
         ExceptionHandler.InfoMessage("ServerThread closed");
     }
 
-    private void handshake(){
-        String hostname = recvMessage(in);
+    private void handshake()throws Exception{
+        String hostname = recvMessage(in,"hostname");
         if(server.isHostNameUnique(hostname)) {
             sendMessage(out, "ACK");
         }else {
@@ -85,7 +92,7 @@ public class ServerThread extends Thread{
      * Calculates which files are already on the server
      * and sends a list of those to the client
      */
-    private void initMainSequence(){
+    private void initMainSequence()throws Exception{
         ArrayList<tools.file.File> files = server.calcMetaData(hostname);
         sendMessage(out,"REPLY");
         if(files != null) {
@@ -96,8 +103,8 @@ public class ServerThread extends Thread{
         }else{
             sendMessage(out,"NULL");
         }
-        if(!recvMessage(in).equals("ACK"))
-            return; //TODO what to do with errors?
+        if(!recvMessage(in,"ACK").equals("ACK"))
+            throw new CommunicationException("Received wrong Message","ACK");
     }
 
     /**
@@ -109,20 +116,19 @@ public class ServerThread extends Thread{
         int fileCount = Integer.valueOf(recvMessage(in));
         sendMessage(out,"ACK");
         for(int i = 0; i < fileCount; i++){
-            if(!recvMessage(in).equals("NAME"))
-                return; //TODO ERROR
+            if(!recvMessage(in,"NAME").equals("NAME"))
+                throw new CommunicationException("Received wrong Message","NAME");
             String filename = recvMessage(in);
-            if(!recvMessage(in).equals("SIZE"))
-                return; //TODO ERROR
+            if(!recvMessage(in,"SIZE").equals("SIZE"))
+                throw new CommunicationException("Received wrong Message","SIZE");
             long fileSize = Long.valueOf(recvMessage(in));
-            if(!recvMessage(in).equals("CONTENT"))
-                return; //TODO ERROR
-            boolean b = receiveContent(filename,fileSize);
-            if(!b) throw new Exception("receiveContent returned false");
+            if(!recvMessage(in,"CONTENT").equals("CONTENT"))
+                throw new CommunicationException("Received wrong Message","CONTENT");
+            receiveContent(filename,fileSize);
             sendMessage(out,"ACK");
         }
-        if(!recvMessage(in).equals("NULL"))
-            return;//TODO ERROR
+        if(!recvMessage(in,"NULL").equals("NULL"))
+            throw new CommunicationException("Received wrong Message","NULL");
         sendMessage(out,"ACK");
     }
 
@@ -132,7 +138,7 @@ public class ServerThread extends Thread{
      * @param filename
      * @return
      */
-    private boolean receiveContent(String filename, long fileSize){
+    private void receiveContent(String filename, long fileSize)throws Exception{
         byte[] buffer = new byte[BUFFER_SIZE];
         File f = new File(myBaseDir+filename);
         try{
@@ -144,19 +150,19 @@ public class ServerThread extends Thread{
                 //ignore
             }
             if(!f.createNewFile()) {
-                System.out.println("#FileSystemError: "+f.getName());
-                return false; //TODO file system error
+                throw new CommunicationException("FileSystemError"+filename,"ACK");
             }
             FileOutputStream out = new FileOutputStream(f);
             boolean b = IOHelper.writeToOutputStream(in,out,fileSize);
             if(b)
                 out.close();
-            else throw new Exception("File to Disk Error");
-            return b;
+            else
+                throw new CommunicationException("File to Disk Error");
+        }catch (CommunicationException com) {
+            ExceptionHandler.handleException(com);
         }catch (Exception e){
             ExceptionHandler.handleException(e, ExceptionHandler.OccClass.SERVER_THREAD);
         }
-        return false;
     }
 
     /**

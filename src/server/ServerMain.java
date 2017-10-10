@@ -2,7 +2,7 @@ package server;
 
 import tools.ExceptionHandler;
 
-public class Main {
+public class ServerMain {
 
     public static void main(String args[]){
         int port = Integer.valueOf(args[0]);

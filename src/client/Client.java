@@ -2,6 +2,7 @@ package client;
 
 import tools.ExceptionHandler;
 import tools.file.FileFinder;
+import tools.protocol.CommunicationException;
 
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -42,6 +43,7 @@ public class Client {
      * Initializes the communication
      */
     private void startCommunication(){
+        try {
         if(!handshake())return;
         String metadata = initMainSequence();
         if(metadata == null) return;
@@ -53,42 +55,47 @@ public class Client {
         }
         sendData(filesToSend);
         endCommunication();
+
+        }catch (CommunicationException com){
+            ExceptionHandler.handleException(com);
+        }catch (Exception e){
+            if(e instanceof  CommunicationException)
+                ExceptionHandler.handleException((CommunicationException) e);
+            else
+                ExceptionHandler.handleException(e, ExceptionHandler.OccClass.CLIENT);
+        }
     }
 
     /**
      * Performs the handshake with the server connected on socket
      * may change the hostname, if such a hostname already exists on the server
      */
-    private boolean handshake(){
+    private boolean handshake() throws Exception{
         sendMessage(out,"SYN");
         sendMessage(out,hostname);
-        String s = recvMessage(in);
-        if(s==null)
-            return false;
+        String s = recvMessage(in,"ACK|NEW");
         if(s.equals("ACK"))
             return true;
         if(s.equals("NEW")){ //Sets a new Hostname for further communication
-            String w = recvMessage(in);
-            if(w == null) return false;
-            hostname = w;
+            hostname = recvMessage(in,"hostname");
             return true;
         }
-        return false;
+        throw new CommunicationException("Received wrong Message","ACK|NEW");
     }
 
     /**
      * Client requests Metadata from the server and calculates which files to upload
      * returns true if the server has send correct data
      */
-    private String initMainSequence(){
+    private String initMainSequence()throws Exception{
         sendMessage(out,"REQ");
-        String reply = recvMessage(in);
+        String reply = recvMessage(in,"REPLY");
         if(reply.equals("REPLY")){
-            String metadata = recvMessage(in);
+            String metadata = recvMessage(in,"metadata");
             sendMessage(out,"ACK");
             return metadata;
         }
-        return null;
+        throw new CommunicationException("Received wrong Message","REPLY");
     }
 
     /**
@@ -118,7 +125,7 @@ public class Client {
      * @param listOfFiles
      * @return
      */
-    private boolean sendData(ArrayList<tools.file.File> listOfFiles){
+    private boolean sendData(ArrayList<tools.file.File> listOfFiles)throws Exception{
         sendMessage(out,"FILES");
         sendMessage(out,""+listOfFiles.size());
         if(!recvMessage(in).equals("ACK")) return false;
@@ -129,20 +136,19 @@ public class Client {
             sendMessage(out,Long.toString(f.content.length()));
             sendMessage(out,"CONTENT");
             if(!f.writeToOutputStream(out))
-                return false; //TODO currently receives null instead of ACK
-            if(!recvMessage(in).equals("ACK"))
-                return false;//TODO find a way to requeue files
+                throw new CommunicationException("Couldn't write to OutputStream");
+            if(!recvMessage(in,"ACK").equals("ACK"))
+                throw new CommunicationException("Received wrong Message","ACK");
         }
         sendMessage(out,"NULL");
-        return recvMessage(in).equals("ACK");
+        return recvMessage(in,"ACK").equals("ACK");
     }
 
-    private boolean endCommunication(){
+    private boolean endCommunication()throws Exception{
         sendMessage(out,"CLOSE");
-        String s = recvMessage(in);
+        String s = recvMessage(in,"CLOSE_ACK");
         if(!s.equals("CLOSE_ACK")){
-            //TODO what do we do if Server doesn't want to stop?
-            return false;
+            throw new CommunicationException("Received wrong Message","CLOSE_ACK");
         }
         try {
             in.close();
