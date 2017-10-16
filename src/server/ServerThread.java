@@ -23,10 +23,9 @@ public class ServerThread extends Thread{
     private boolean run = true;
     private Server server;
     private String hostname;
-    private final int BUFFER_SIZE = 8096;
     private String serverBaseDir;
     private String myBaseDir;
-
+    private final int TIMEOUT = 500;
 
     public ServerThread(Server server, Socket socket, String serverBaseDir){
         super();
@@ -44,22 +43,30 @@ public class ServerThread extends Thread{
     }
 
     public void run(){
+    	int timeout = TIMEOUT;
         while (run){
             try {
                 String s = recvMessage(in);
-                switch (s) {
-                    case "SYN":
-                        handshake();
-                        break;
-                    case "REQ":
-                        initMainSequence();
-                        break;
-                    case "FILES":
-                        sendData();
-                        break;
-                    case "CLOSE":
-                        sendMessage(out, "CLOSE_ACK");
-                        stopThis();
+                if(s == null){
+                	if(timeout-- < 0)
+                		run = false;
+                	Thread.sleep(10);
+                }else{
+                	timeout = TIMEOUT;
+	                switch (s) {
+	                    case "SYN":
+	                        handshake();
+	                        break;
+	                    case "REQ":
+	                        initMainSequence();
+	                        break;
+	                    case "FILES":
+	                        sendData();
+	                        break;
+	                    case "CLOSE":
+	                        sendMessage(out, "CLOSE_ACK");
+	                        stopThis();
+	                }
                 }
             }catch (CommunicationException com){
                 ExceptionHandler.handleException(com);
@@ -99,9 +106,13 @@ public class ServerThread extends Thread{
             StringBuilder metadata = new StringBuilder();
             for (tools.file.File f : files)
                 metadata.append(f.filename + " ");
-            sendMessage(out,metadata.toString());
+            String msg = metadata.toString();
+            if(msg == null || msg.equals("null") || msg.length() == 0)
+            	sendMessage(out,"NULL");
+            else
+            	sendMessage(out,msg);
         }else{
-            sendMessage(out,"NULL");
+        	sendMessage(out,"NULL");
         }
         if(!recvMessage(in,"ACK").equals("ACK"))
             throw new CommunicationException("Received wrong Message","ACK");
@@ -139,7 +150,6 @@ public class ServerThread extends Thread{
      * @return
      */
     private void receiveContent(String filename, long fileSize)throws Exception{
-        byte[] buffer = new byte[BUFFER_SIZE];
         File f = new File(myBaseDir+filename);
         try{
             try {

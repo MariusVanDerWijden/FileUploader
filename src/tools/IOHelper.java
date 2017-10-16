@@ -11,8 +11,7 @@ public abstract class IOHelper {
 
 
     private static final int BUFFER_SIZE = 8096; //write 8KB at once
-    private static final int TIMEOUT = 1000000; //prevents us from infinitely waiting
-    private static final boolean DEBUG = true;
+    private static final boolean DEBUG = false;
 
     /**
      * Sends a message over the socket
