@@ -12,7 +12,7 @@ public abstract class IOHelper {
 
     private static final int BUFFER_SIZE = 8096; //write 8KB at once
     private static final int TIMEOUT = 1000000; //prevents us from infinitely waiting
-    private static final boolean DEBUG = true;
+    private static final boolean DEBUG = false;
 
     /**
      * Sends a message over the socket
@@ -66,7 +66,10 @@ public abstract class IOHelper {
             byte[] buffer = new byte[BUFFER_SIZE];
             int i;
             int bytesRead = 0;
+            int percentRead = 0;
             while (bytesRead < fileSize && (i = in.read(buffer)) != -1) {
+                if(bytesRead /(fileSize/100) > percentRead)
+                    System.out.println("Written "+percentRead++ +" percent");
                 bytesRead += i;
                 if(DEBUG)System.out.println("WriteToOutput: " + Arrays.toString(buffer));
                 out.write(buffer, 0, i);
