@@ -22,11 +22,12 @@ public class File {
      * @param out
      * @return
      */
-    public boolean writeToOutputStream(OutputStream out){
+    public boolean writeToOutputStream(OutputStream out,boolean printStatus){
         try{
             if(content.canRead()){
                 FileInputStream in = new FileInputStream(content);
-                boolean b =  IOHelper.writeToOutputStream(in,out);
+                boolean b =  IOHelper.writeToOutputStream(in,out,content.length(),printStatus);
+                if(b && printStatus) ExceptionHandler.InfoMessage("Written 100 percent");
                 in.close();
                 return b;
             }

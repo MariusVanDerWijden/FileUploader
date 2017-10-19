@@ -135,7 +135,7 @@ public class Client {
             sendMessage(out,"SIZE");
             sendMessage(out,Long.toString(f.content.length()));
             sendMessage(out,"CONTENT");
-            if(!f.writeToOutputStream(out))
+            if(!f.writeToOutputStream(out,true))
                 throw new CommunicationException("Couldn't write to OutputStream");
             if(!recvMessage(in,"ACK").equals("ACK"))
                 throw new CommunicationException("Received wrong Message","ACK");

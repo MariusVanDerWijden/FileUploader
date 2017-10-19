@@ -163,7 +163,7 @@ public class ServerThread extends Thread{
                 throw new CommunicationException("FileSystemError"+filename,"ACK");
             }
             FileOutputStream out = new FileOutputStream(f);
-            boolean b = IOHelper.writeToOutputStream(in,out,fileSize);
+            boolean b = IOHelper.writeToOutputStream(in,out,fileSize,false);
             if(b)
                 out.close();
             else

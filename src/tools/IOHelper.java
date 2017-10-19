@@ -12,6 +12,7 @@ public abstract class IOHelper {
 
     private static final int BUFFER_SIZE = 8096; //write 8KB at once
     private static final boolean DEBUG = false;
+    private static final int writePercentageFrom = 100*1024*1024; //display Percentage only if file is bigger than this
 
     /**
      * Sends a message over the socket
@@ -60,17 +61,18 @@ public abstract class IOHelper {
      * @param out
      * @return
      */
-    public static boolean writeToOutputStream(InputStream in, OutputStream out, long fileSize){
+    public static boolean writeToOutputStream(InputStream in, OutputStream out, long fileSize, boolean printStatus){
         try{
             byte[] buffer = new byte[BUFFER_SIZE];
             int i;
             int bytesRead = 0;
             int percentRead = 0;
+            boolean b = (printStatus && fileSize > writePercentageFrom);
             while (bytesRead < fileSize && (i = in.read(buffer)) != -1) {
-                if(bytesRead /(fileSize/100) > percentRead)
-                    System.out.println("Written "+percentRead++ +" percent");
+                if(b && bytesRead /(fileSize/100) > percentRead)
+                    ExceptionHandler.InfoMessage("Written "+ ++percentRead +" percent");
                 bytesRead += i;
-                if(DEBUG)System.out.println("WriteToOutput: " + Arrays.toString(buffer));
+                if(DEBUG)ExceptionHandler.InfoMessage("WriteToOutput: " + Arrays.toString(buffer));
                 out.write(buffer, 0, i);
             }
             return true;
@@ -78,10 +80,6 @@ public abstract class IOHelper {
             ExceptionHandler.handleException(e, ExceptionHandler.OccClass.IO_HELPER);
         }
         return false;
-    }
-
-    public static boolean writeToOutputStream(InputStream in, OutputStream out){
-        return writeToOutputStream(in,out,Long.MAX_VALUE);
     }
 
     /**
